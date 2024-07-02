@@ -44,6 +44,7 @@ Partial Class MainUI
         Me.TSS_MENU = New System.Windows.Forms.ToolStripSeparator()
         Me.TSI_OPTIONS = New System.Windows.Forms.ToolStripMenuItem()
         Me.TSI_ABOUT = New System.Windows.Forms.ToolStripMenuItem()
+        Me.CBO_PRESET = New System.Windows.Forms.ComboBox()
         CType(Me.PIC_ABOUT_BADGE, System.ComponentModel.ISupportInitialize).BeginInit()
         Me.CMS_MENU.SuspendLayout()
         Me.SuspendLayout()
@@ -141,7 +142,7 @@ Partial Class MainUI
         Me.BTN_HANDLE.Location = New System.Drawing.Point(192, 192)
         Me.BTN_HANDLE.Name = "BTN_HANDLE"
         Me.BTN_HANDLE.Size = New System.Drawing.Size(140, 50)
-        Me.BTN_HANDLE.TabIndex = 901
+        Me.BTN_HANDLE.TabIndex = 801
         Me.BTN_HANDLE.Text = "开始"
         Me.BTN_HANDLE.UseVisualStyleBackColor = True
         '
@@ -209,13 +210,25 @@ Partial Class MainUI
         Me.TSI_ABOUT.Size = New System.Drawing.Size(140, 22)
         Me.TSI_ABOUT.Text = "关于(&A)"
         '
+        'CBO_PRESET
+        '
+        Me.CBO_PRESET.Font = New System.Drawing.Font("微软雅黑", 10.5!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(134, Byte))
+        Me.CBO_PRESET.FormattingEnabled = True
+        Me.CBO_PRESET.Location = New System.Drawing.Point(362, 202)
+        Me.CBO_PRESET.Name = "CBO_PRESET"
+        Me.CBO_PRESET.Size = New System.Drawing.Size(150, 28)
+        Me.CBO_PRESET.TabIndex = 901
+        Me.CBO_PRESET.Text = "(无可用预设)"
+        '
         'MainUI
         '
+        Me.AcceptButton = Me.BTN_HANDLE
         Me.AllowDrop = True
         Me.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None
         Me.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink
         Me.BackColor = System.Drawing.Color.White
         Me.ClientSize = New System.Drawing.Size(524, 261)
+        Me.Controls.Add(Me.CBO_PRESET)
         Me.Controls.Add(Me.TXT_OUTPUT_DEST_FILE)
         Me.Controls.Add(Me.TXT_INPUT_SOURCE_FILE)
         Me.Controls.Add(Me.BTN_NEW_TASK)
@@ -262,4 +275,5 @@ Partial Class MainUI
     Friend WithEvents TSI_ABOUT As ToolStripMenuItem
     Friend WithEvents TSI_WIPE_CACHE As ToolStripMenuItem
     Friend WithEvents TSS_MENU As ToolStripSeparator
+    Friend WithEvents CBO_PRESET As ComboBox
 End Class

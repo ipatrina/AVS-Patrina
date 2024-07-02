@@ -23,12 +23,8 @@ Partial Class Preferences
     <System.Diagnostics.DebuggerStepThrough()> _
     Private Sub InitializeComponent()
         Dim resources As System.ComponentModel.ComponentResourceManager = New System.ComponentModel.ComponentResourceManager(GetType(Preferences))
-        Me.LBL_ENCODE = New System.Windows.Forms.Label()
         Me.LBL_ABOUT_SUMMARY = New System.Windows.Forms.Label()
         Me.PIC_ABOUT_BADGE = New System.Windows.Forms.PictureBox()
-        Me.TXT_ENCODE = New System.Windows.Forms.TextBox()
-        Me.TXT_TRANSCODE = New System.Windows.Forms.TextBox()
-        Me.LBL_TRANSCODE = New System.Windows.Forms.Label()
         Me.NUM_THREADS = New System.Windows.Forms.NumericUpDown()
         Me.LBL_THREADS = New System.Windows.Forms.Label()
         Me.LBL_TS_ID = New System.Windows.Forms.Label()
@@ -36,78 +32,47 @@ Partial Class Preferences
         Me.LBL_PMT_PID = New System.Windows.Forms.Label()
         Me.NUM_PMT_PID = New System.Windows.Forms.NumericUpDown()
         Me.BTN_HANDLE = New System.Windows.Forms.Button()
+        Me.LBL_PCR_OFFSET = New System.Windows.Forms.Label()
+        Me.NUM_PCR_OFFSET = New System.Windows.Forms.NumericUpDown()
+        Me.LBL_PTS_DELAY = New System.Windows.Forms.Label()
+        Me.NUM_PTS_DELAY = New System.Windows.Forms.NumericUpDown()
+        Me.LBL_GOP_MIN = New System.Windows.Forms.Label()
+        Me.NUM_GOP_MIN = New System.Windows.Forms.NumericUpDown()
         CType(Me.PIC_ABOUT_BADGE, System.ComponentModel.ISupportInitialize).BeginInit()
         CType(Me.NUM_THREADS, System.ComponentModel.ISupportInitialize).BeginInit()
         CType(Me.NUM_TS_ID, System.ComponentModel.ISupportInitialize).BeginInit()
         CType(Me.NUM_PMT_PID, System.ComponentModel.ISupportInitialize).BeginInit()
+        CType(Me.NUM_PCR_OFFSET, System.ComponentModel.ISupportInitialize).BeginInit()
+        CType(Me.NUM_PTS_DELAY, System.ComponentModel.ISupportInitialize).BeginInit()
+        CType(Me.NUM_GOP_MIN, System.ComponentModel.ISupportInitialize).BeginInit()
         Me.SuspendLayout()
-        '
-        'LBL_ENCODE
-        '
-        Me.LBL_ENCODE.AutoSize = True
-        Me.LBL_ENCODE.Font = New System.Drawing.Font("微软雅黑", 12.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(134, Byte))
-        Me.LBL_ENCODE.Location = New System.Drawing.Point(9, 142)
-        Me.LBL_ENCODE.Name = "LBL_ENCODE"
-        Me.LBL_ENCODE.Size = New System.Drawing.Size(90, 21)
-        Me.LBL_ENCODE.TabIndex = 401
-        Me.LBL_ENCODE.Text = "编码器选项"
         '
         'LBL_ABOUT_SUMMARY
         '
-        Me.LBL_ABOUT_SUMMARY.Location = New System.Drawing.Point(69, 11)
+        Me.LBL_ABOUT_SUMMARY.Location = New System.Drawing.Point(100, 12)
         Me.LBL_ABOUT_SUMMARY.Name = "LBL_ABOUT_SUMMARY"
-        Me.LBL_ABOUT_SUMMARY.Size = New System.Drawing.Size(543, 71)
+        Me.LBL_ABOUT_SUMMARY.Size = New System.Drawing.Size(400, 90)
         Me.LBL_ABOUT_SUMMARY.TabIndex = 101
-        Me.LBL_ABOUT_SUMMARY.Text = "AVS Patrina是一款适用于将MPEG-2传输流中采用AVS1-P16广播视频(AVS+)编码标准的图像转换为MPEG-4 Part 10 (H.264)编" &
-    "码标准，并保留MPEG-2传输流中原始音频数据的非实时视频编码转换器。"
+        Me.LBL_ABOUT_SUMMARY.Text = "AVS Patrina 是一款适用于将 MPEG-2 传输流中采用 AVS1-P16 广播视频 (AVS+) 编码标准的图像转换为 MPEG-4 Part 10 " &
+    "(H.264) 编码标准，并保留 MPEG-2 传输流中原始音频数据的非实时视频编码转换器。"
         '
         'PIC_ABOUT_BADGE
         '
         Me.PIC_ABOUT_BADGE.Image = CType(resources.GetObject("PIC_ABOUT_BADGE.Image"), System.Drawing.Image)
-        Me.PIC_ABOUT_BADGE.Location = New System.Drawing.Point(13, 11)
+        Me.PIC_ABOUT_BADGE.Location = New System.Drawing.Point(12, 18)
         Me.PIC_ABOUT_BADGE.Name = "PIC_ABOUT_BADGE"
-        Me.PIC_ABOUT_BADGE.Size = New System.Drawing.Size(50, 50)
+        Me.PIC_ABOUT_BADGE.Size = New System.Drawing.Size(75, 75)
         Me.PIC_ABOUT_BADGE.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage
         Me.PIC_ABOUT_BADGE.TabIndex = 10013
         Me.PIC_ABOUT_BADGE.TabStop = False
         '
-        'TXT_ENCODE
-        '
-        Me.TXT_ENCODE.Font = New System.Drawing.Font("微软雅黑", 10.5!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(134, Byte))
-        Me.TXT_ENCODE.Location = New System.Drawing.Point(12, 170)
-        Me.TXT_ENCODE.MaxLength = 0
-        Me.TXT_ENCODE.Multiline = True
-        Me.TXT_ENCODE.Name = "TXT_ENCODE"
-        Me.TXT_ENCODE.Size = New System.Drawing.Size(600, 68)
-        Me.TXT_ENCODE.TabIndex = 411
-        Me.TXT_ENCODE.Text = "-I420"
-        '
-        'TXT_TRANSCODE
-        '
-        Me.TXT_TRANSCODE.Font = New System.Drawing.Font("微软雅黑", 10.5!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(134, Byte))
-        Me.TXT_TRANSCODE.Location = New System.Drawing.Point(12, 282)
-        Me.TXT_TRANSCODE.MaxLength = 0
-        Me.TXT_TRANSCODE.Multiline = True
-        Me.TXT_TRANSCODE.Name = "TXT_TRANSCODE"
-        Me.TXT_TRANSCODE.Size = New System.Drawing.Size(600, 68)
-        Me.TXT_TRANSCODE.TabIndex = 511
-        '
-        'LBL_TRANSCODE
-        '
-        Me.LBL_TRANSCODE.AutoSize = True
-        Me.LBL_TRANSCODE.Font = New System.Drawing.Font("微软雅黑", 12.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(134, Byte))
-        Me.LBL_TRANSCODE.Location = New System.Drawing.Point(9, 254)
-        Me.LBL_TRANSCODE.Name = "LBL_TRANSCODE"
-        Me.LBL_TRANSCODE.Size = New System.Drawing.Size(90, 21)
-        Me.LBL_TRANSCODE.TabIndex = 501
-        Me.LBL_TRANSCODE.Text = "编码服务器"
-        '
         'NUM_THREADS
         '
-        Me.NUM_THREADS.Location = New System.Drawing.Point(105, 99)
+        Me.NUM_THREADS.Location = New System.Drawing.Point(104, 111)
+        Me.NUM_THREADS.Maximum = New Decimal(New Integer() {1000, 0, 0, 0})
         Me.NUM_THREADS.Minimum = New Decimal(New Integer() {1, 0, 0, 0})
         Me.NUM_THREADS.Name = "NUM_THREADS"
-        Me.NUM_THREADS.Size = New System.Drawing.Size(80, 29)
+        Me.NUM_THREADS.Size = New System.Drawing.Size(70, 29)
         Me.NUM_THREADS.TabIndex = 211
         Me.NUM_THREADS.Value = New Decimal(New Integer() {10, 0, 0, 0})
         '
@@ -115,7 +80,7 @@ Partial Class Preferences
         '
         Me.LBL_THREADS.AutoSize = True
         Me.LBL_THREADS.Font = New System.Drawing.Font("微软雅黑", 12.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(134, Byte))
-        Me.LBL_THREADS.Location = New System.Drawing.Point(9, 102)
+        Me.LBL_THREADS.Location = New System.Drawing.Point(8, 114)
         Me.LBL_THREADS.Name = "LBL_THREADS"
         Me.LBL_THREADS.Size = New System.Drawing.Size(90, 21)
         Me.LBL_THREADS.TabIndex = 201
@@ -125,7 +90,7 @@ Partial Class Preferences
         '
         Me.LBL_TS_ID.AutoSize = True
         Me.LBL_TS_ID.Font = New System.Drawing.Font("微软雅黑", 12.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(134, Byte))
-        Me.LBL_TS_ID.Location = New System.Drawing.Point(241, 102)
+        Me.LBL_TS_ID.Location = New System.Drawing.Point(192, 114)
         Me.LBL_TS_ID.Name = "LBL_TS_ID"
         Me.LBL_TS_ID.Size = New System.Drawing.Size(71, 21)
         Me.LBL_TS_ID.TabIndex = 221
@@ -133,11 +98,11 @@ Partial Class Preferences
         '
         'NUM_TS_ID
         '
-        Me.NUM_TS_ID.Location = New System.Drawing.Point(318, 99)
+        Me.NUM_TS_ID.Location = New System.Drawing.Point(269, 111)
         Me.NUM_TS_ID.Maximum = New Decimal(New Integer() {65535, 0, 0, 0})
         Me.NUM_TS_ID.Minimum = New Decimal(New Integer() {1, 0, 0, 0})
         Me.NUM_TS_ID.Name = "NUM_TS_ID"
-        Me.NUM_TS_ID.Size = New System.Drawing.Size(80, 29)
+        Me.NUM_TS_ID.Size = New System.Drawing.Size(75, 29)
         Me.NUM_TS_ID.TabIndex = 231
         Me.NUM_TS_ID.Value = New Decimal(New Integer() {1, 0, 0, 0})
         '
@@ -145,7 +110,7 @@ Partial Class Preferences
         '
         Me.LBL_PMT_PID.AutoSize = True
         Me.LBL_PMT_PID.Font = New System.Drawing.Font("微软雅黑", 12.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(134, Byte))
-        Me.LBL_PMT_PID.Location = New System.Drawing.Point(449, 102)
+        Me.LBL_PMT_PID.Location = New System.Drawing.Point(359, 114)
         Me.LBL_PMT_PID.Name = "LBL_PMT_PID"
         Me.LBL_PMT_PID.Size = New System.Drawing.Size(77, 21)
         Me.LBL_PMT_PID.TabIndex = 241
@@ -153,31 +118,98 @@ Partial Class Preferences
         '
         'NUM_PMT_PID
         '
-        Me.NUM_PMT_PID.Location = New System.Drawing.Point(532, 99)
+        Me.NUM_PMT_PID.Location = New System.Drawing.Point(442, 111)
         Me.NUM_PMT_PID.Maximum = New Decimal(New Integer() {8190, 0, 0, 0})
         Me.NUM_PMT_PID.Minimum = New Decimal(New Integer() {32, 0, 0, 0})
         Me.NUM_PMT_PID.Name = "NUM_PMT_PID"
-        Me.NUM_PMT_PID.Size = New System.Drawing.Size(80, 29)
+        Me.NUM_PMT_PID.Size = New System.Drawing.Size(70, 29)
         Me.NUM_PMT_PID.TabIndex = 251
-        Me.NUM_PMT_PID.Value = New Decimal(New Integer() {8190, 0, 0, 0})
+        Me.NUM_PMT_PID.Value = New Decimal(New Integer() {32, 0, 0, 0})
         '
         'BTN_HANDLE
         '
         Me.BTN_HANDLE.Font = New System.Drawing.Font("微软雅黑", 18.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(134, Byte))
-        Me.BTN_HANDLE.Location = New System.Drawing.Point(242, 371)
+        Me.BTN_HANDLE.Location = New System.Drawing.Point(192, 192)
         Me.BTN_HANDLE.Name = "BTN_HANDLE"
         Me.BTN_HANDLE.Size = New System.Drawing.Size(140, 50)
         Me.BTN_HANDLE.TabIndex = 901
         Me.BTN_HANDLE.Text = "保存"
         Me.BTN_HANDLE.UseVisualStyleBackColor = True
         '
+        'LBL_PCR_OFFSET
+        '
+        Me.LBL_PCR_OFFSET.AutoSize = True
+        Me.LBL_PCR_OFFSET.Font = New System.Drawing.Font("微软雅黑", 12.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(134, Byte))
+        Me.LBL_PCR_OFFSET.Location = New System.Drawing.Point(8, 149)
+        Me.LBL_PCR_OFFSET.Name = "LBL_PCR_OFFSET"
+        Me.LBL_PCR_OFFSET.Size = New System.Drawing.Size(89, 21)
+        Me.LBL_PCR_OFFSET.TabIndex = 301
+        Me.LBL_PCR_OFFSET.Text = "PCR偏移帧"
+        '
+        'NUM_PCR_OFFSET
+        '
+        Me.NUM_PCR_OFFSET.Location = New System.Drawing.Point(104, 146)
+        Me.NUM_PCR_OFFSET.Maximum = New Decimal(New Integer() {250, 0, 0, 0})
+        Me.NUM_PCR_OFFSET.Minimum = New Decimal(New Integer() {1, 0, 0, 0})
+        Me.NUM_PCR_OFFSET.Name = "NUM_PCR_OFFSET"
+        Me.NUM_PCR_OFFSET.Size = New System.Drawing.Size(70, 29)
+        Me.NUM_PCR_OFFSET.TabIndex = 311
+        Me.NUM_PCR_OFFSET.Value = New Decimal(New Integer() {20, 0, 0, 0})
+        '
+        'LBL_PTS_DELAY
+        '
+        Me.LBL_PTS_DELAY.AutoSize = True
+        Me.LBL_PTS_DELAY.Font = New System.Drawing.Font("微软雅黑", 12.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(134, Byte))
+        Me.LBL_PTS_DELAY.Location = New System.Drawing.Point(192, 149)
+        Me.LBL_PTS_DELAY.Name = "LBL_PTS_DELAY"
+        Me.LBL_PTS_DELAY.Size = New System.Drawing.Size(70, 21)
+        Me.LBL_PTS_DELAY.TabIndex = 321
+        Me.LBL_PTS_DELAY.Text = "PTS延迟"
+        '
+        'NUM_PTS_DELAY
+        '
+        Me.NUM_PTS_DELAY.Increment = New Decimal(New Integer() {3600, 0, 0, 0})
+        Me.NUM_PTS_DELAY.Location = New System.Drawing.Point(269, 146)
+        Me.NUM_PTS_DELAY.Maximum = New Decimal(New Integer() {900000, 0, 0, 0})
+        Me.NUM_PTS_DELAY.Minimum = New Decimal(New Integer() {900000, 0, 0, -2147483648})
+        Me.NUM_PTS_DELAY.Name = "NUM_PTS_DELAY"
+        Me.NUM_PTS_DELAY.Size = New System.Drawing.Size(75, 29)
+        Me.NUM_PTS_DELAY.TabIndex = 331
+        '
+        'LBL_GOP_MIN
+        '
+        Me.LBL_GOP_MIN.AutoSize = True
+        Me.LBL_GOP_MIN.Font = New System.Drawing.Font("微软雅黑", 12.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(134, Byte))
+        Me.LBL_GOP_MIN.Location = New System.Drawing.Point(359, 149)
+        Me.LBL_GOP_MIN.Name = "LBL_GOP_MIN"
+        Me.LBL_GOP_MIN.Size = New System.Drawing.Size(77, 21)
+        Me.LBL_GOP_MIN.TabIndex = 341
+        Me.LBL_GOP_MIN.Text = "最小GOP"
+        '
+        'NUM_GOP_MIN
+        '
+        Me.NUM_GOP_MIN.Location = New System.Drawing.Point(442, 146)
+        Me.NUM_GOP_MIN.Maximum = New Decimal(New Integer() {1000, 0, 0, 0})
+        Me.NUM_GOP_MIN.Minimum = New Decimal(New Integer() {1, 0, 0, 0})
+        Me.NUM_GOP_MIN.Name = "NUM_GOP_MIN"
+        Me.NUM_GOP_MIN.Size = New System.Drawing.Size(70, 29)
+        Me.NUM_GOP_MIN.TabIndex = 351
+        Me.NUM_GOP_MIN.Value = New Decimal(New Integer() {25, 0, 0, 0})
+        '
         'Preferences
         '
+        Me.AcceptButton = Me.BTN_HANDLE
         Me.AutoScaleDimensions = New System.Drawing.SizeF(10.0!, 21.0!)
         Me.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font
         Me.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink
         Me.BackColor = System.Drawing.Color.White
-        Me.ClientSize = New System.Drawing.Size(624, 441)
+        Me.ClientSize = New System.Drawing.Size(524, 261)
+        Me.Controls.Add(Me.LBL_GOP_MIN)
+        Me.Controls.Add(Me.NUM_GOP_MIN)
+        Me.Controls.Add(Me.LBL_PTS_DELAY)
+        Me.Controls.Add(Me.NUM_PTS_DELAY)
+        Me.Controls.Add(Me.LBL_PCR_OFFSET)
+        Me.Controls.Add(Me.NUM_PCR_OFFSET)
         Me.Controls.Add(Me.BTN_HANDLE)
         Me.Controls.Add(Me.LBL_PMT_PID)
         Me.Controls.Add(Me.NUM_PMT_PID)
@@ -185,16 +217,13 @@ Partial Class Preferences
         Me.Controls.Add(Me.NUM_TS_ID)
         Me.Controls.Add(Me.LBL_THREADS)
         Me.Controls.Add(Me.NUM_THREADS)
-        Me.Controls.Add(Me.TXT_TRANSCODE)
-        Me.Controls.Add(Me.LBL_TRANSCODE)
-        Me.Controls.Add(Me.TXT_ENCODE)
         Me.Controls.Add(Me.PIC_ABOUT_BADGE)
         Me.Controls.Add(Me.LBL_ABOUT_SUMMARY)
-        Me.Controls.Add(Me.LBL_ENCODE)
         Me.Font = New System.Drawing.Font("微软雅黑", 12.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(134, Byte))
         Me.Icon = CType(resources.GetObject("$this.Icon"), System.Drawing.Icon)
         Me.Margin = New System.Windows.Forms.Padding(5)
         Me.MaximizeBox = False
+        Me.MinimizeBox = False
         Me.Name = "Preferences"
         Me.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen
         Me.Text = "偏好设置"
@@ -202,17 +231,15 @@ Partial Class Preferences
         CType(Me.NUM_THREADS, System.ComponentModel.ISupportInitialize).EndInit()
         CType(Me.NUM_TS_ID, System.ComponentModel.ISupportInitialize).EndInit()
         CType(Me.NUM_PMT_PID, System.ComponentModel.ISupportInitialize).EndInit()
+        CType(Me.NUM_PCR_OFFSET, System.ComponentModel.ISupportInitialize).EndInit()
+        CType(Me.NUM_PTS_DELAY, System.ComponentModel.ISupportInitialize).EndInit()
+        CType(Me.NUM_GOP_MIN, System.ComponentModel.ISupportInitialize).EndInit()
         Me.ResumeLayout(False)
         Me.PerformLayout()
 
     End Sub
-
-    Friend WithEvents LBL_ENCODE As Label
     Friend WithEvents LBL_ABOUT_SUMMARY As Label
     Friend WithEvents PIC_ABOUT_BADGE As PictureBox
-    Friend WithEvents TXT_ENCODE As TextBox
-    Friend WithEvents TXT_TRANSCODE As TextBox
-    Friend WithEvents LBL_TRANSCODE As Label
     Friend WithEvents NUM_THREADS As NumericUpDown
     Friend WithEvents LBL_THREADS As Label
     Friend WithEvents LBL_TS_ID As Label
@@ -220,4 +247,10 @@ Partial Class Preferences
     Friend WithEvents LBL_PMT_PID As Label
     Friend WithEvents NUM_PMT_PID As NumericUpDown
     Friend WithEvents BTN_HANDLE As Button
+    Friend WithEvents LBL_PCR_OFFSET As Label
+    Friend WithEvents NUM_PCR_OFFSET As NumericUpDown
+    Friend WithEvents LBL_PTS_DELAY As Label
+    Friend WithEvents NUM_PTS_DELAY As NumericUpDown
+    Friend WithEvents LBL_GOP_MIN As Label
+    Friend WithEvents NUM_GOP_MIN As NumericUpDown
 End Class

@@ -22,6 +22,7 @@ Public Class MainUI
     Public ENCODE_PARAMETERS As String = ""
     Public ERROR_MESSAGE As String = ""
     Public ES_STREAM As New List(Of MemoryStream)
+    Public GOP_MIN As Integer = 25
     Public INPUT_READ As FileStream
     Public INPUT_READER As BinaryReader
     Public INTRA_PTS As New List(Of Long)
@@ -36,8 +37,10 @@ Public Class MainUI
     Public PASSTHROUGH_PID_TYPE As New List(Of Integer)
     Public PAT_PMT As Byte()
     Public PAT_PMT_COUNTER As Integer = -1
-    Public PMT_PID As Integer = 8190
+    Public PCR_OFFSET As Integer = 20
+    Public PMT_PID As Integer = 32
     Public PMT_PROGRAM_NUMBER As Integer = 1
+    Public PTS_DELAY As Integer = 0
     Public PROCESSOR_STOPWATCH As New Stopwatch
     Public PROCESSOR_STOPWATCH_PROGRESS As Integer = -1
     Public TS_ID As Integer = 1
@@ -214,9 +217,7 @@ Public Class MainUI
                         BTN_HANDLE.Enabled = True
                         Exit Sub
                     Else
-                        Dim AVC_CONFIG_FILE As String = ""
-                        Dim CONFIG_FILE_SEARCH As System.Collections.ObjectModel.ReadOnlyCollection(Of String) = My.Computer.FileSystem.GetFiles(Application.StartupPath, FileIO.SearchOption.SearchTopLevelOnly, "*.ini")
-                        If CONFIG_FILE_SEARCH.Count > 0 Then AVC_CONFIG_FILE = CONFIG_FILE_SEARCH(0)
+                        Dim AVC_CONFIG_FILE As String = Application.StartupPath & "\" & CBO_PRESET.Text & ".ini"
                         If My.Computer.FileSystem.FileExists(AVC_CONFIG_FILE) Then
                             Dim AVC_CONFIG_CACHE As String = ""
                             For Each AVC_CONFIG_LINE In My.Computer.FileSystem.ReadAllText(AVC_CONFIG_FILE).Split(vbLf)
@@ -356,7 +357,11 @@ Public Class MainUI
 
     Private Sub MainUI_Load(sender As Object, e As EventArgs) Handles MyBase.Load
         Try
-
+            For Each PresetFile In Directory.GetFiles(Application.StartupPath, "*.ini")
+                Dim PresetFileName As String = Path.GetFileNameWithoutExtension(PresetFile)
+                CBO_PRESET.Items.Add(PresetFileName)
+                CBO_PRESET.Text = PresetFileName
+            Next
         Catch ex As Exception
 
         End Try
@@ -373,7 +378,7 @@ Public Class MainUI
     Private Sub TSI_ABOUT_Click(sender As Object, e As EventArgs) Handles TSI_ABOUT.Click
         Try
             Dim VersionStrings As String() = Application.ProductVersion.ToString.Split(".")
-            MsgBox("AVS Patrina" & vbCrLf & vbCrLf & "AVS1-P16广播视频编码转换器" & vbCrLf & vbCrLf & "软件版本：" & VersionStrings(0) & "." & VersionStrings(1) & "." & VersionStrings(2) & vbCrLf & "更新时间：20" & VersionStrings(3).Substring(0, 2) & "年" & Int(VersionStrings(3).Substring(2, 2)) & "月" & vbCrLf & vbCrLf & "Copyright © 2021-2022 版权所有", vbInformation, TSI_ABOUT.Text.Split("(")(0))
+            MsgBox("AVS Patrina" & vbCrLf & vbCrLf & "AVS1-P16广播视频编码转换器" & vbCrLf & vbCrLf & "软件版本：" & VersionStrings(0) & "." & VersionStrings(1) & "." & VersionStrings(2) & vbCrLf & "更新时间：20" & VersionStrings(3).Substring(0, 2) & "年" & Int(VersionStrings(3).Substring(2, 2)) & "月" & vbCrLf & vbCrLf & "Copyright © 2021-2024 版权所有", vbInformation, TSI_ABOUT.Text.Split("(")(0))
         Catch ex As Exception
 
         End Try
@@ -655,7 +660,7 @@ Public Class MainUI
     Private Function CALC_CRC32_MPEG_2(Data As UInteger(), Length As Integer) As UInteger
         Dim i As UInteger
         Dim crc As UInteger = &HFFFFFFFFL, j As UInteger = 0
-        While (Math.Max(Threading.Interlocked.Decrement(Length), Length + 1)) <> 0
+        While Math.Max(Threading.Interlocked.Decrement(Length), Length + 1) <> 0
             crc = crc Xor Data(j) << 24
             j += 1
             For i = 0 To 7
@@ -673,12 +678,12 @@ Public Class MainUI
         Dim CRC32_Data As UInteger()
         CRC32_Data = HexToUInt(Input)
         Dim CRC32_Result As UInteger = CALC_CRC32_MPEG_2(CRC32_Data, CRC32_Data.Length)
-        Dim crcStr As String = (CRC32_Result.ToString("X4"))
+        Dim crcStr As String = CRC32_Result.ToString("X4")
         crcStr = If(crcStr.Length = 8, crcStr, "0" & crcStr)
         Return crcStr.Trim
     End Function
 
-    Public Function CheckValidationResult(ByVal sender As Object, ByVal certificate As X509Certificate, ByVal chain As X509Chain, ByVal errors As SslPolicyErrors) As Boolean
+    Public Function CheckValidationResult(sender As Object, certificate As X509Certificate, chain As X509Chain, errors As SslPolicyErrors) As Boolean
         Return True
     End Function
 
@@ -799,6 +804,7 @@ Public Class MainUI
                     Dim CONVERSION_READER As New BinaryReader(CONVERSION_READ)
                     Dim PES_PTS_REFERENCE As Long = Int64.MinValue
                     Dim TS_PID_PCR_COUNTER As Integer = 0
+                    Dim TS_PID_PCR_REFERENCE As Long = 0
                     Do
                         Dim TS_PACKET_READ_AVAILABLE As Integer = TS_PACKET_SIZE
                         TS_PACKET_READ_AVAILABLE -= TS_PACKET_HEADER_SIZE
@@ -843,17 +849,21 @@ Public Class MainUI
                                     Dim PES_HEADER_BIT As New BitArray(PES_HEADER)
                                     Dim PES_PTS As Long = 0
                                     Dim PES_DTS As Long = 0
+                                    Dim PES_PTS_OUTPUT As Long = 0
+                                    Dim PES_DTS_OUTPUT As Long = 0
                                     If PES_HEADER_BIT(63) Then
                                         PES_PTS = GetPTS(PES_HEADER, 10)
-                                        If PES_PTS_REFERENCE = Int64.MinValue Then PES_PTS_REFERENCE = INTRA_PTS(ThreadID) - PES_PTS
+                                        If PES_PTS_REFERENCE = Int64.MinValue Then PES_PTS_REFERENCE = INTRA_PTS(ThreadID) - PES_PTS + PTS_DELAY
                                         Dim PES_PTS_BUFFER As Byte() = New Byte(4) {}
                                         Array.Copy(PES_HEADER, 9, PES_PTS_BUFFER, 0, 5)
-                                        PES_PTS_BUFFER = SetPTS(PES_PTS + PES_PTS_REFERENCE, PES_PTS_BUFFER)
+                                        PES_PTS_OUTPUT = PES_PTS + PES_PTS_REFERENCE
+                                        PES_PTS_BUFFER = SetPTS(PES_PTS_OUTPUT, PES_PTS_BUFFER)
                                         Array.Copy(PES_PTS_BUFFER, 0, TS_PACKET_DATA, TS_PACKET_SIZE - TS_PACKET_READ_AVAILABLE + 9, 5)
                                         If PES_HEADER_BIT(62) Then
                                             PES_DTS = GetPTS(PES_HEADER, 15)
                                             Array.Copy(PES_HEADER, 14, PES_PTS_BUFFER, 0, 5)
-                                            PES_PTS_BUFFER = SetPTS(PES_DTS + PES_PTS_REFERENCE, PES_PTS_BUFFER)
+                                            PES_DTS_OUTPUT = PES_DTS + PES_PTS_REFERENCE
+                                            PES_PTS_BUFFER = SetPTS(PES_DTS_OUTPUT, PES_PTS_BUFFER)
                                             Array.Copy(PES_PTS_BUFFER, 0, TS_PACKET_DATA, TS_PACKET_SIZE - TS_PACKET_READ_AVAILABLE + 14, 5)
 
                                             If PES_PTS < PES_DTS Then
@@ -862,12 +872,16 @@ Public Class MainUI
                                                 Exit Do
                                             End If
                                         End If
+
+                                        If PES_DTS_OUTPUT = 0 Then PES_DTS_OUTPUT = PES_PTS_OUTPUT
+                                        TS_PID_PCR_REFERENCE = PES_DTS_OUTPUT - GetPCRBase() * PCR_OFFSET
+                                        TS_PID_PCR_COUNTER = 0
                                     End If
                                 End If
 
                                 If TS_PACKET_PCR_INCLUSIVE Then
-                                    Dim TS_PID_PCR As Long = GetPCR(TS_PACKET_DATA, 7)
-                                    Dim TS_PID_PCR_BUFFER As Byte() = SetPCR(TS_PID_PCR + PES_PTS_REFERENCE - TS_PID_PCR_COUNTER * Math.Floor(90000 / Convert.ToDouble(AVS_VIDEO_INFO(2)) / 10))
+                                    'Dim TS_PID_PCR As Long = GetPCR(TS_PACKET_DATA, 7)
+                                    Dim TS_PID_PCR_BUFFER As Byte() = SetPCR(TS_PID_PCR_REFERENCE + TS_PID_PCR_COUNTER * Math.Floor(GetPCRBase() / 9))
                                     Array.Copy(TS_PID_PCR_BUFFER, 0, TS_PACKET_DATA, 6, 6)
                                     TS_PID_PCR_COUNTER += 1
                                 End If
@@ -957,6 +971,14 @@ Public Class MainUI
         End Try
     End Function
 
+    Public Function GetPCRBase() As Integer
+        Try
+            Return Math.Floor(90000 / Convert.ToDouble(AVS_VIDEO_INFO(2)))
+        Catch ex As Exception
+            Return 3600
+        End Try
+    End Function
+
     Public Function GetPTS(param1 As Byte(), param2 As Integer) As Long
         Try
             Dim _loc_1 As Integer = (param2 - 1) * 8
@@ -1032,8 +1054,7 @@ Public Class MainUI
     Private Sub GetStream(ThreadID As Integer)
         Try
             Dim MT_THREAD_ID As Integer = ThreadID
-            Dim INPUT_FRAME_GROUP As Integer = Int32.MaxValue / 2
-            Dim INPUT_FRAME_GROUP_MINIMUM As Integer = 5
+            Dim INPUT_FRAME_GROUP As Integer = 10000000
             Do
                 Dim TS_PACKET_READ_AVAILABLE As Integer = TS_PACKET_SIZE
                 TS_PACKET_READ_AVAILABLE -= TS_PACKET_HEADER_SIZE
@@ -1074,7 +1095,7 @@ Public Class MainUI
                             Array.Copy(PES_DATA, PES_HEADER, PES_PAYLOAD_OFFSET)
                             If TS_PACKET_PID = AVS_PID Then
                                 INPUT_FRAME_GROUP += 1
-                                If BytesToHex(PES_PAYLOAD).IndexOf("000001B3") Mod 2 = 0 And INPUT_FRAME_GROUP >= INPUT_FRAME_GROUP_MINIMUM Then
+                                If BytesToHex(PES_PAYLOAD).IndexOf("000001B3") Mod 2 = 0 And INPUT_FRAME_GROUP >= GOP_MIN Then
                                     PASSTHROUGH_ACTIVE = True
                                     If ES_STREAM(MT_THREAD_ID).Length <= 0 Then
                                         INTRA_PTS(MT_THREAD_ID) = GetPTS(PES_HEADER, 10)
@@ -1375,6 +1396,7 @@ Public Class MainUI
             DRA_PID = -1
             ERROR_MESSAGE = ""
             ES_STREAM.Clear()
+            GOP_MIN = 25
             INTRA_PTS.Clear()
             MT_ABORT = 1
             MT_ACTIVE = True
@@ -1385,7 +1407,9 @@ Public Class MainUI
             PASSTHROUGH_PID_TYPE.Clear()
             PAT_PMT = Nothing
             PAT_PMT_COUNTER = -1
-            PMT_PID = 8190
+            PCR_OFFSET = 20
+            PTS_DELAY = 0
+            PMT_PID = 32
             PMT_PROGRAM_NUMBER = 1
             PROCESSOR_STOPWATCH_PROGRESS = -1
             TS_ID = 1
@@ -1395,29 +1419,32 @@ Public Class MainUI
         End Try
 
         Try
-            Dim _loc_1 As String = KeyRead("Threading")
-            If IsNumeric(_loc_1) Then
-                MT_THREADS = Int(_loc_1)
-            End If
+            Dim _loc_1 As String = KeyRead("THREAD_MAX")
+            If IsNumeric(_loc_1) Then MT_THREADS = Int(_loc_1)
 
             _loc_1 = KeyRead("TS_ID")
-            If IsNumeric(_loc_1) Then
-                TS_ID = Int(_loc_1)
-            End If
+            If IsNumeric(_loc_1) Then TS_ID = Int(_loc_1)
 
             _loc_1 = KeyRead("PMT_PID")
-            If IsNumeric(_loc_1) Then
-                PMT_PID = Int(_loc_1)
-            End If
+            If IsNumeric(_loc_1) Then PMT_PID = Int(_loc_1)
 
-            _loc_1 = KeyRead("Encoding")
-            If _loc_1.Length > 0 And _loc_1.Contains("-") Then
-                ENCODE_PARAMETERS = _loc_1
-            Else
-                ENCODE_PARAMETERS = "-I420"
-            End If
+            _loc_1 = KeyRead("PCR_OFFSET")
+            If IsNumeric(_loc_1) Then PCR_OFFSET = Int(_loc_1)
 
-            CLOUD_TRANSCODING = KeyRead("Transcoding")
+            _loc_1 = KeyRead("PTS_DELAY")
+            If IsNumeric(_loc_1) Then PTS_DELAY = Int(_loc_1)
+
+            _loc_1 = KeyRead("GOP_MIN")
+            If IsNumeric(_loc_1) Then GOP_MIN = Int(_loc_1)
+
+            '_loc_1 = KeyRead("Encoding")
+            'If _loc_1.Length > 0 And _loc_1.Contains("-") Then
+            '    ENCODE_PARAMETERS = _loc_1
+            'Else
+            '    ENCODE_PARAMETERS = "-I420"
+            'End If
+
+            'CLOUD_TRANSCODING = KeyRead("Transcoding")
         Catch ex As Exception
 
         End Try
