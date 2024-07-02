@@ -701,7 +701,6 @@ Public Class MainUI
                 If My.Computer.FileSystem.FileExists(ES_DECODER) Then
                     Dim ES_CACHE_FILE As String = GetTempFile() & ".avs"
                     My.Computer.FileSystem.WriteAllBytes(ES_CACHE_FILE, ES_BUFFER, False)
-
                     Dim YUV_CACHE_FILE As String = GetTempFile() & ".yuv"
                     Dim ES_DECODER_SHELL As New Process()
                     ES_DECODER_SHELL.StartInfo.FileName = ES_DECODER
@@ -1095,7 +1094,7 @@ Public Class MainUI
                             Array.Copy(PES_DATA, PES_HEADER, PES_PAYLOAD_OFFSET)
                             If TS_PACKET_PID = AVS_PID Then
                                 INPUT_FRAME_GROUP += 1
-                                If BytesToHex(PES_PAYLOAD).IndexOf("000001B3") Mod 2 = 0 And INPUT_FRAME_GROUP >= GOP_MIN Then
+                                If BytesToHex(PES_PAYLOAD).Substring(0, 100).IndexOf("000001B3FFFFFF40") Mod 2 = 0 And INPUT_FRAME_GROUP >= GOP_MIN Then
                                     PASSTHROUGH_ACTIVE = True
                                     If ES_STREAM(MT_THREAD_ID).Length <= 0 Then
                                         INTRA_PTS(MT_THREAD_ID) = GetPTS(PES_HEADER, 10)
@@ -1159,6 +1158,7 @@ Public Class MainUI
                 If _loc_5.Groups(3).Value.Length > 0 And _loc_5.Groups(3).Value.Length > 0 Then
                     Dim _loc_6 As Integer = HexToInt(_loc_5.Groups(3).Value)
                     Dim _loc_7 As Integer = HexToInt(_loc_5.Groups(5).Value)
+                    If _loc_7 = 858604353 Then _loc_7 = 6
                     If _loc_7 = 826364484 Then _loc_7 = 1006
                     If _loc_7 = 66 Or _loc_7 = 1448302145 Then
                         AVS_PID = _loc_6
