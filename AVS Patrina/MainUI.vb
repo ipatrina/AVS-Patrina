@@ -12,6 +12,7 @@ Imports Microsoft.Win32
 
 Public Class MainUI
 
+    Public AVS_FRAME_TYPE_PREVIOUS As Integer = 0
     Public AVS_PID As Integer = -1
     Public AVS_PID_COUNTER As Integer = -1
     Public AVS_VIDEO_INFO As New List(Of String)
@@ -23,6 +24,7 @@ Public Class MainUI
     Public ERROR_MESSAGE As String = ""
     Public ES_STREAM As New List(Of MemoryStream)
     Public GOP_MIN As Integer = 25
+    Public INPUT_GOP As New List(Of Integer)
     Public INPUT_READ As FileStream
     Public INPUT_READER As BinaryReader
     Public INTRA_PTS As New List(Of Long)
@@ -718,19 +720,46 @@ Public Class MainUI
                         MT_STATUS(ThreadID) = -3
                         Exit Sub
                     End If
-                    If My.Computer.FileSystem.FileExists(YUV_CACHE_FILE) Then
-                        If New FileInfo(YUV_CACHE_FILE).Length > 1024 Then
-                            Dim RAW_ENCODER_SHELL As New Process()
-                            RAW_ENCODER_SHELL.StartInfo.FileName = MAINCONCEPT_ENC_AVC
-                            RAW_ENCODER_SHELL.StartInfo.WorkingDirectory = Path.GetDirectoryName(YUV_CACHE_FILE)
-                            RAW_ENCODER_SHELL.StartInfo.Arguments = "-I420 -w " & AVS_VIDEO_INFO(0) & " -h " & AVS_VIDEO_INFO(1) & " -v " & Chr(34) & YUV_CACHE_FILE & Chr(34) & " -o " & Chr(34) & AVC_CACHE_FILE & Chr(34) & " -c " & Chr(34) & AVS_VIDEO_INFO(3) & Chr(34)
-                            RAW_ENCODER_SHELL.StartInfo.WindowStyle = ProcessWindowStyle.Hidden
-                            RAW_ENCODER_SHELL.Start()
-                            RAW_ENCODER_SHELL.WaitForExit()
-                            RAW_ENCODER_SHELL.Close()
-                            RAW_ENCODER_SHELL.Dispose()
-                        End If
+
+                    Dim YUV_FRAME_SIZE As Long = Int(AVS_VIDEO_INFO(0)) * Int(AVS_VIDEO_INFO(1)) * 1.5
+                    Dim YUV_FILE_SIZE As Long = 0
+                    If My.Computer.FileSystem.FileExists(YUV_CACHE_FILE) Then YUV_FILE_SIZE = New FileInfo(YUV_CACHE_FILE).Length
+                    If Not YUV_FILE_SIZE = INPUT_GOP(ThreadID) * YUV_FRAME_SIZE And Not INPUT_GOP(ThreadID) = 0 Then
+                        Dim YUV_FILE_STREAM As New IO.FileStream(YUV_CACHE_FILE, IO.FileMode.OpenOrCreate, IO.FileAccess.Write, IO.FileShare.None)
+                        YUV_FILE_STREAM.SetLength(INPUT_GOP(ThreadID) * YUV_FRAME_SIZE)
+                        Try
+                            Dim YUV_STAFF As Byte() = New Byte() {}
+                            Dim YUV_STAFF_FILE As String = ""
+                            For Each YUV_STAFF_FILE_SELECT As String In Directory.GetFiles(Application.StartupPath, "*.yuv")
+                                If New IO.FileInfo(YUV_STAFF_FILE_SELECT).Length = YUV_FRAME_SIZE Then
+                                    YUV_STAFF_FILE = YUV_STAFF_FILE_SELECT
+                                    Exit For
+                                End If
+                            Next
+                            If YUV_STAFF_FILE.Length > 0 Then YUV_STAFF = My.Computer.FileSystem.ReadAllBytes(YUV_STAFF_FILE)
+
+                            Dim YUV_STAFF_OFFSET As Long = Math.Ceiling(YUV_FILE_SIZE / YUV_FRAME_SIZE) * YUV_FRAME_SIZE
+                            If YUV_STAFF.Length > 0 And YUV_STAFF_OFFSET < YUV_FILE_STREAM.Length Then
+                                YUV_FILE_STREAM.Seek(YUV_STAFF_OFFSET, 0)
+                                While YUV_FILE_STREAM.Position < YUV_FILE_STREAM.Length
+                                    YUV_FILE_STREAM.Write(YUV_STAFF, 0, YUV_STAFF.Length)
+                                End While
+                            End If
+                        Catch ex As Exception
+
+                        End Try
+                        YUV_FILE_STREAM.Close()
                     End If
+
+                    Dim RAW_ENCODER_SHELL As New Process()
+                    RAW_ENCODER_SHELL.StartInfo.FileName = MAINCONCEPT_ENC_AVC
+                    RAW_ENCODER_SHELL.StartInfo.WorkingDirectory = Path.GetDirectoryName(YUV_CACHE_FILE)
+                    RAW_ENCODER_SHELL.StartInfo.Arguments = "-I420 -w " & AVS_VIDEO_INFO(0) & " -h " & AVS_VIDEO_INFO(1) & " -v " & Chr(34) & YUV_CACHE_FILE & Chr(34) & " -o " & Chr(34) & AVC_CACHE_FILE & Chr(34) & " -c " & Chr(34) & AVS_VIDEO_INFO(3) & Chr(34)
+                    RAW_ENCODER_SHELL.StartInfo.WindowStyle = ProcessWindowStyle.Hidden
+                    RAW_ENCODER_SHELL.Start()
+                    RAW_ENCODER_SHELL.WaitForExit()
+                    RAW_ENCODER_SHELL.Close()
+                    RAW_ENCODER_SHELL.Dispose()
 
                     Try
                         If CACHE_REMOVE Then
@@ -924,6 +953,24 @@ Public Class MainUI
         End Try
     End Sub
 
+    'GB/T 20090.16-2016
+    Public Function GetFrameType(param1 As Byte()) As Integer
+        Try
+            Dim _loc_1 As String = BytesToHex(param1)
+            Dim _loc_2 As Integer = _loc_1.IndexOf("000001B3")
+            If _loc_2 Mod 2 = 0 Then Return 1    'I frame
+            _loc_2 = _loc_1.IndexOf("000001B6")
+            If _loc_2 Mod 2 = 0 Then
+                _loc_1 = BytesToBin(New Byte() {param1(_loc_2 / 2 + 7)}).Substring(0, 2)
+                If _loc_1 = "01" Then Return 2   'P frame
+                If _loc_1 = "10" Then Return 3   'B frame
+            End If
+            Return 0                             'Undefined
+        Catch ex As Exception
+            Return 0
+        End Try
+    End Function
+
     Public Function GetPCR(param1 As Byte(), param2 As Integer) As Long
         Try
             Dim _loc_1 As Integer = (param2 - 1) * 8
@@ -1024,11 +1071,11 @@ Public Class MainUI
         End Try
     End Function
 
-    Public Function GetRndFileName() As String
-        Return "H264_" & Format(Now(), "yyyyMMddHHmmss") & "_" & GetRndString(4)
+    Public Function GetRandomFileName() As String
+        Return "H264_" & Format(Now(), "yyyyMMddHHmmss") & "_" & GetRandomString(4)
     End Function
 
-    Public Function GetRndString(StringLength As Long) As String
+    Public Function GetRandomString(StringLength As Long) As String
         Try
             Randomize()
             Dim _loc_1 As String = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
@@ -1094,7 +1141,10 @@ Public Class MainUI
                             Array.Copy(PES_DATA, PES_HEADER, PES_PAYLOAD_OFFSET)
                             If TS_PACKET_PID = AVS_PID Then
                                 INPUT_FRAME_GROUP += 1
-                                If BytesToHex(PES_PAYLOAD).Substring(0, 100).IndexOf("000001B3FFFFFF40") Mod 2 = 0 And INPUT_FRAME_GROUP >= GOP_MIN Then
+                                INPUT_GOP(MT_THREAD_ID) = INPUT_FRAME_GROUP
+                                Dim AVS_FRAME_TYPE_CURRENT As Integer = GetFrameType(PES_PAYLOAD)
+                                If AVS_FRAME_TYPE_CURRENT = 1 And (AVS_FRAME_TYPE_PREVIOUS = 1 Or AVS_FRAME_TYPE_PREVIOUS = 2) And INPUT_FRAME_GROUP >= GOP_MIN Then
+                                    AVS_FRAME_TYPE_PREVIOUS = AVS_FRAME_TYPE_CURRENT
                                     PASSTHROUGH_ACTIVE = True
                                     If ES_STREAM(MT_THREAD_ID).Length <= 0 Then
                                         INTRA_PTS(MT_THREAD_ID) = GetPTS(PES_HEADER, 10)
@@ -1102,6 +1152,8 @@ Public Class MainUI
                                     Else
                                         Exit Do
                                     End If
+                                Else
+                                    AVS_FRAME_TYPE_PREVIOUS = AVS_FRAME_TYPE_CURRENT
                                 End If
                                 ES_STREAM(MT_THREAD_ID).Write(PES_PAYLOAD, 0, PES_PAYLOAD.Length)
                             End If
@@ -1185,7 +1237,7 @@ Public Class MainUI
     Private Function GetTempFile() As String
         Dim _loc_1 As String = Path.GetTempPath() & "\AVS\"
         If Not Directory.Exists(_loc_1) Then My.Computer.FileSystem.CreateDirectory(_loc_1)
-        Return _loc_1 & Time() & "_" & GetRndString(10)
+        Return _loc_1 & Time() & "_" & GetRandomString(10)
     End Function
 
     Public Function HexToBytes(param1 As String) As Byte()
@@ -1379,7 +1431,7 @@ Public Class MainUI
                 DirectoryName = Path.GetDirectoryName(Input) & "\"
                 FileName = RegulateFileName(_loc_1(_loc_1.Length - 1))
             End If
-            If FileName = "" Then FileName = GetRndFileName()
+            If FileName = "" Then FileName = GetRandomFileName()
             If Not FileName.Contains(".") Then FileName &= DefaultExtension
             Return DirectoryName & FileName
         Catch ex As Exception
@@ -1389,6 +1441,7 @@ Public Class MainUI
 
     Private Sub ResetStream()
         Try
+            AVS_FRAME_TYPE_PREVIOUS = 0
             AVS_PID = -1
             AVS_PID_COUNTER = -1
             AVS_VIDEO_INFO.Clear()
@@ -1397,6 +1450,7 @@ Public Class MainUI
             ERROR_MESSAGE = ""
             ES_STREAM.Clear()
             GOP_MIN = 25
+            INPUT_GOP.Clear()
             INTRA_PTS.Clear()
             MT_ABORT = 1
             MT_ACTIVE = True
@@ -1452,6 +1506,7 @@ Public Class MainUI
         Try
             For _loc_1 = 1 To MT_THREADS
                 CONVERSION_STREAM.Add(New MemoryStream)
+                INPUT_GOP.Add(0)
                 INTRA_PTS.Add(0)
                 MT_STATUS.Add(0)
                 ES_STREAM.Add(New MemoryStream)
@@ -1468,6 +1523,7 @@ Public Class MainUI
             CONVERSION_STREAM(ThreadID) = New MemoryStream
             ES_STREAM(ThreadID).Close()
             ES_STREAM(ThreadID) = New MemoryStream
+            INPUT_GOP(ThreadID) = 0
             INTRA_PTS(ThreadID) = 0
             MT_STATUS(ThreadID) = 0
             TS_STREAM(ThreadID).Close()
@@ -1626,9 +1682,16 @@ Public Class MainUI
                     TS_STREAM(ThreadID).Read(OUTPUT_BUFFER, 0, OUTPUT_BUFFER.Length)
                 End If
 
-                PAT_PMT_COUNTER_STEP()
-                OUTPUT_WRITER.Write(PAT_PMT)
-                OUTPUT_WRITER.Write(OUTPUT_BUFFER)
+                Dim OUTPUT_ROUND_LENGTH As Integer = Math.Ceiling(OUTPUT_BUFFER.Length / TS_PACKET_SIZE / INPUT_GOP(ThreadID) * 5) * TS_PACKET_SIZE
+                Dim OUTPUT_ROUND_CURRENT As Integer = OUTPUT_ROUND_LENGTH
+                OUTPUT_BUFFER_OFFSET = 0
+                While OUTPUT_BUFFER_OFFSET < OUTPUT_BUFFER.Length
+                    If OUTPUT_BUFFER.Length - OUTPUT_BUFFER_OFFSET < OUTPUT_ROUND_LENGTH Then OUTPUT_ROUND_CURRENT = OUTPUT_BUFFER.Length - OUTPUT_BUFFER_OFFSET
+                    PAT_PMT_COUNTER_STEP()
+                    OUTPUT_WRITER.Write(PAT_PMT)
+                    OUTPUT_WRITER.Write(OUTPUT_BUFFER, OUTPUT_BUFFER_OFFSET, OUTPUT_ROUND_CURRENT)
+                    OUTPUT_BUFFER_OFFSET += OUTPUT_ROUND_CURRENT
+                End While
                 OUTPUT_WRITER.Flush()
             End If
 
