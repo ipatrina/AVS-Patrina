@@ -10,9 +10,9 @@ AVS Patrina 3.0 采用全球首屈一指的MainConcept® AVC(软件)编码器，
 
 # 安装和使用
 
-本软件适用于Windows 7及以上操作系统。使用本软件将占用大量CPU、内存资源并消耗固态硬盘使用寿命。
+本软件适用于Windows 7及以上64位操作系统。使用本软件将占用大量CPU、内存、硬盘资源，并消耗固态硬盘(如为缓存磁盘)使用寿命。
 
-若要开始使用AVS Patrina 3.0进行工作，您需要准备以下组件。请注意，这些组件可能涉及商业授权或商业机密。
+若要开始使用AVS Patrina 3.0进行工作，您需要准备以下组件。请注意，这些自备组件可能涉及商业授权或商业机密。
 
 - 包含AVS1-P16(AVS+)支持的GDM解码演示可执行程序
 
@@ -42,7 +42,7 @@ AVS Patrina 3.0 采用全球首屈一指的MainConcept® AVC(软件)编码器，
 
 - sample_mux_mp2_file.exe
 
-若您持有MainConcept® AVC编码器商业授权，请将已授权的DLL文件重命名为“demo_enc_avc.dll”并进行放置。
+若您持有MainConcept® AVC编码器商业授权，请将已授权的dll文件重命名为“demo_enc_avc.dll”并进行放置。
 
 通过编辑发行包中的ini配置文件可实现理想的H.264编码参数。
 
