@@ -569,6 +569,9 @@ Public Class MainUI
                     ElseIf PASSTHROUGH_PID_TYPE(_LOC_4) = 1006 Then
                         PASSTHROUGH_PID_TYPE(_LOC_4) = 6
                         INSERT_CODEC_PAT_PMT = "DRA"
+                    ElseIf PASSTHROUGH_PID_TYPE(_LOC_4) = 2006 Then
+                        PASSTHROUGH_PID_TYPE(_LOC_4) = 6
+                        INSERT_CODEC_PAT_PMT = "EAC3"
                     End If
 
                     PACKET_DATA_BIN += ID_BIN(PASSTHROUGH_PID_TYPE(_LOC_4), 8)   'stream_type
@@ -577,7 +580,17 @@ Public Class MainUI
                     PACKET_DATA_BIN += "1111"       'reserved
 
                     If PASSTHROUGH_PID_TYPE(_LOC_4) = 6 Then
-                        If INSERT_CODEC_PAT_PMT.Replace("-", "").ToUpper.Contains("AC3") Then
+                        If INSERT_CODEC_PAT_PMT.Replace("-", "").ToUpper.Contains("EAC3") Then
+                            'BEGIN BUILD E-AC-3 ES INFO
+                            PACKET_DATA_BIN += "000000000011"                        'ES_info_length 0x03
+
+                            PACKET_DATA_BIN += "01111010"                            'descriptor_tag 0x7A
+
+                            PACKET_DATA_BIN += "00000001"                            'descriptor_length 0x01
+
+                            PACKET_DATA_BIN += "00000000"
+                            'END BUILD E-AC-3 ES INFO
+                        ElseIf INSERT_CODEC_PAT_PMT.Replace("-", "").ToUpper.Contains("AC3") Then
                             'BEGIN BUILD AC-3 ES INFO
                             PACKET_DATA_BIN += "000000000011"                        'ES_info_length 0x03
 
@@ -728,21 +741,21 @@ Public Class MainUI
                         Dim YUV_FILE_STREAM As New IO.FileStream(YUV_CACHE_FILE, IO.FileMode.OpenOrCreate, IO.FileAccess.Write, IO.FileShare.None)
                         YUV_FILE_STREAM.SetLength(INPUT_GOP(ThreadID) * YUV_FRAME_SIZE)
                         Try
-                            Dim YUV_STAFF As Byte() = New Byte() {}
-                            Dim YUV_STAFF_FILE As String = ""
-                            For Each YUV_STAFF_FILE_SELECT As String In Directory.GetFiles(Application.StartupPath, "*.yuv")
-                                If New IO.FileInfo(YUV_STAFF_FILE_SELECT).Length = YUV_FRAME_SIZE Then
-                                    YUV_STAFF_FILE = YUV_STAFF_FILE_SELECT
+                            Dim YUV_STUFF As Byte() = New Byte() {}
+                            Dim YUV_STUFF_FILE As String = ""
+                            For Each YUV_STUFF_FILE_SELECT As String In Directory.GetFiles(Application.StartupPath, "*.yuv")
+                                If New IO.FileInfo(YUV_STUFF_FILE_SELECT).Length = YUV_FRAME_SIZE Then
+                                    YUV_STUFF_FILE = YUV_STUFF_FILE_SELECT
                                     Exit For
                                 End If
                             Next
-                            If YUV_STAFF_FILE.Length > 0 Then YUV_STAFF = My.Computer.FileSystem.ReadAllBytes(YUV_STAFF_FILE)
+                            If YUV_STUFF_FILE.Length > 0 Then YUV_STUFF = My.Computer.FileSystem.ReadAllBytes(YUV_STUFF_FILE)
 
-                            Dim YUV_STAFF_OFFSET As Long = Math.Ceiling(YUV_FILE_SIZE / YUV_FRAME_SIZE) * YUV_FRAME_SIZE
-                            If YUV_STAFF.Length > 0 And YUV_STAFF_OFFSET < YUV_FILE_STREAM.Length Then
-                                YUV_FILE_STREAM.Seek(YUV_STAFF_OFFSET, 0)
+                            Dim YUV_STUFF_OFFSET As Long = Math.Ceiling(YUV_FILE_SIZE / YUV_FRAME_SIZE) * YUV_FRAME_SIZE
+                            If YUV_STUFF.Length > 0 And YUV_STUFF_OFFSET < YUV_FILE_STREAM.Length Then
+                                YUV_FILE_STREAM.Seek(YUV_STUFF_OFFSET, 0)
                                 While YUV_FILE_STREAM.Position < YUV_FILE_STREAM.Length
-                                    YUV_FILE_STREAM.Write(YUV_STAFF, 0, YUV_STAFF.Length)
+                                    YUV_FILE_STREAM.Write(YUV_STUFF, 0, YUV_STUFF.Length)
                                 End While
                             End If
                         Catch ex As Exception
@@ -1212,6 +1225,7 @@ Public Class MainUI
                     Dim _loc_7 As Integer = HexToInt(_loc_5.Groups(5).Value)
                     If _loc_7 = 858604353 Then _loc_7 = 6
                     If _loc_7 = 826364484 Then _loc_7 = 1006
+                    If _loc_3.Contains("audio:eac3") Then _loc_7 = 2006
                     If _loc_7 = 66 Or _loc_7 = 1448302145 Then
                         AVS_PID = _loc_6
                         PASSTHROUGH_PID.Insert(0, AVS_PID)
@@ -1236,6 +1250,8 @@ Public Class MainUI
 
     Private Function GetTempFile() As String
         Dim _loc_1 As String = Path.GetTempPath() & "\AVS\"
+        Dim _loc_2 As String = KeyRead("TEMP_PATH")
+        If _loc_2.Length > 1 Then _loc_1 = _loc_2 & "\"
         If Not Directory.Exists(_loc_1) Then My.Computer.FileSystem.CreateDirectory(_loc_1)
         Return _loc_1 & Time() & "_" & GetRandomString(10)
     End Function
@@ -1307,7 +1323,7 @@ Public Class MainUI
     Public Function KeyRead(KeyName As String) As String
         Try
             Dim _loc_1 As RegistryKey = Registry.CurrentUser.OpenSubKey("Software\AVS Patrina", True)
-            Return _loc_1.GetValue(KeyName)
+            Return _loc_1.GetValue(KeyName, "")
         Catch ex As Exception
             Return ""
         End Try
