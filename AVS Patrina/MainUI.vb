@@ -740,27 +740,29 @@ Public Class MainUI
                     If Not YUV_FILE_SIZE = INPUT_GOP(ThreadID) * YUV_FRAME_SIZE And Not INPUT_GOP(ThreadID) = 0 Then
                         Dim YUV_FILE_STREAM As New IO.FileStream(YUV_CACHE_FILE, IO.FileMode.OpenOrCreate, IO.FileAccess.Write, IO.FileShare.None)
                         YUV_FILE_STREAM.SetLength(INPUT_GOP(ThreadID) * YUV_FRAME_SIZE)
-                        Try
-                            Dim YUV_STUFF As Byte() = New Byte() {}
-                            Dim YUV_STUFF_FILE As String = ""
-                            For Each YUV_STUFF_FILE_SELECT As String In Directory.GetFiles(Application.StartupPath, "*.yuv")
-                                If New IO.FileInfo(YUV_STUFF_FILE_SELECT).Length = YUV_FRAME_SIZE Then
-                                    YUV_STUFF_FILE = YUV_STUFF_FILE_SELECT
-                                    Exit For
+                        If YUV_FILE_SIZE < YUV_FILE_STREAM.Length Then
+                            Try
+                                Dim YUV_STUFF As Byte() = New Byte() {}
+                                Dim YUV_STUFF_FILE As String = ""
+                                For Each YUV_STUFF_FILE_SELECT As String In Directory.GetFiles(Application.StartupPath, "*.yuv")
+                                    If New IO.FileInfo(YUV_STUFF_FILE_SELECT).Length = YUV_FRAME_SIZE Then
+                                        YUV_STUFF_FILE = YUV_STUFF_FILE_SELECT
+                                        Exit For
+                                    End If
+                                Next
+                                If YUV_STUFF_FILE.Length > 0 Then YUV_STUFF = My.Computer.FileSystem.ReadAllBytes(YUV_STUFF_FILE)
+
+                                Dim YUV_STUFF_OFFSET As Long = Math.Ceiling(YUV_FILE_SIZE / YUV_FRAME_SIZE) * YUV_FRAME_SIZE
+                                If YUV_STUFF.Length > 0 And YUV_STUFF_OFFSET < YUV_FILE_STREAM.Length Then
+                                    YUV_FILE_STREAM.Seek(YUV_STUFF_OFFSET, 0)
+                                    While YUV_FILE_STREAM.Position < YUV_FILE_STREAM.Length
+                                        YUV_FILE_STREAM.Write(YUV_STUFF, 0, YUV_STUFF.Length)
+                                    End While
                                 End If
-                            Next
-                            If YUV_STUFF_FILE.Length > 0 Then YUV_STUFF = My.Computer.FileSystem.ReadAllBytes(YUV_STUFF_FILE)
+                            Catch ex As Exception
 
-                            Dim YUV_STUFF_OFFSET As Long = Math.Ceiling(YUV_FILE_SIZE / YUV_FRAME_SIZE) * YUV_FRAME_SIZE
-                            If YUV_STUFF.Length > 0 And YUV_STUFF_OFFSET < YUV_FILE_STREAM.Length Then
-                                YUV_FILE_STREAM.Seek(YUV_STUFF_OFFSET, 0)
-                                While YUV_FILE_STREAM.Position < YUV_FILE_STREAM.Length
-                                    YUV_FILE_STREAM.Write(YUV_STUFF, 0, YUV_STUFF.Length)
-                                End While
-                            End If
-                        Catch ex As Exception
-
-                        End Try
+                            End Try
+                        End If
                         YUV_FILE_STREAM.Close()
                     End If
 
@@ -1114,6 +1116,7 @@ Public Class MainUI
         Try
             Dim MT_THREAD_ID As Integer = ThreadID
             Dim INPUT_FRAME_GROUP As Integer = 10000000
+            Dim AVS_I_FRAME_FLUSH_FLAG As Integer = 0
             Do
                 Dim TS_PACKET_READ_AVAILABLE As Integer = TS_PACKET_SIZE
                 TS_PACKET_READ_AVAILABLE -= TS_PACKET_HEADER_SIZE
@@ -1148,22 +1151,33 @@ Public Class MainUI
                         Array.Copy(PES_DATA, 0, TS_PACKET_DATA, TS_PACKET_SIZE - TS_PACKET_READ_AVAILABLE, PES_DATA.Length)
                         If TS_PACKET_HEADER_BIT(14) Then
                             Dim PES_PAYLOAD_OFFSET As Integer = 9 + Int(PES_DATA(8))
+                            If PES_PAYLOAD_OFFSET > PES_DATA.Length - 1 Then PES_PAYLOAD_OFFSET = PES_DATA.Length - 1
                             Dim PES_PAYLOAD As Byte() = New Byte(PES_DATA.Length - PES_PAYLOAD_OFFSET - 1) {}
                             Array.Copy(PES_DATA, PES_PAYLOAD_OFFSET, PES_PAYLOAD, 0, PES_DATA.Length - PES_PAYLOAD_OFFSET)
                             Dim PES_HEADER As Byte() = New Byte(PES_PAYLOAD_OFFSET - 1) {}
                             Array.Copy(PES_DATA, PES_HEADER, PES_PAYLOAD_OFFSET)
                             If TS_PACKET_PID = AVS_PID Then
+                                If AVS_I_FRAME_FLUSH_FLAG > 0 Then    'Pending flush, end read the next I frame
+                                    INPUT_READER.BaseStream.Position -= AVS_I_FRAME_FLUSH_FLAG
+                                    AVS_I_FRAME_FLUSH_FLAG = 0
+                                    AVS_FRAME_TYPE_PREVIOUS = 4
+                                    Exit Do
+                                End If
                                 INPUT_FRAME_GROUP += 1
                                 INPUT_GOP(MT_THREAD_ID) = INPUT_FRAME_GROUP
                                 Dim AVS_FRAME_TYPE_CURRENT As Integer = GetFrameType(PES_PAYLOAD)
-                                If AVS_FRAME_TYPE_CURRENT = 1 And (AVS_FRAME_TYPE_PREVIOUS = 1 Or AVS_FRAME_TYPE_PREVIOUS = 2) And INPUT_FRAME_GROUP >= GOP_MIN Then
-                                    AVS_FRAME_TYPE_PREVIOUS = AVS_FRAME_TYPE_CURRENT
-                                    PASSTHROUGH_ACTIVE = True
-                                    If ES_STREAM(MT_THREAD_ID).Length <= 0 Then
-                                        INTRA_PTS(MT_THREAD_ID) = GetPTS(PES_HEADER, 10)
-                                        INPUT_FRAME_GROUP = 0
+                                If AVS_FRAME_TYPE_CURRENT = 1 And INPUT_FRAME_GROUP >= GOP_MIN Then
+                                    If AVS_FRAME_TYPE_PREVIOUS = 3 Then    'Last frame is a B frame, so need to read the entire next I frame to flush
+                                        AVS_I_FRAME_FLUSH_FLAG += TS_PACKET_SIZE
                                     Else
-                                        Exit Do
+                                        AVS_FRAME_TYPE_PREVIOUS = AVS_FRAME_TYPE_CURRENT
+                                        PASSTHROUGH_ACTIVE = True
+                                        If ES_STREAM(MT_THREAD_ID).Length <= 0 Then    'Is this the GOP starting I frame, or the GOP ending I frame
+                                            INTRA_PTS(MT_THREAD_ID) = GetPTS(PES_HEADER, 10)
+                                            INPUT_FRAME_GROUP = 0
+                                        Else
+                                            Exit Do
+                                        End If
                                     End If
                                 Else
                                     AVS_FRAME_TYPE_PREVIOUS = AVS_FRAME_TYPE_CURRENT
@@ -1171,11 +1185,14 @@ Public Class MainUI
                                 ES_STREAM(MT_THREAD_ID).Write(PES_PAYLOAD, 0, PES_PAYLOAD.Length)
                             End If
                         Else
+                            If AVS_I_FRAME_FLUSH_FLAG > 0 Then AVS_I_FRAME_FLUSH_FLAG += TS_PACKET_SIZE
                             ES_STREAM(MT_THREAD_ID).Write(PES_DATA, 0, PES_DATA.Length)
                         End If
                     Else
                         Dim TS_PACKET_PAYLOAD As Byte() = INPUT_READER.ReadBytes(TS_PACKET_SIZE - TS_PACKET_HEADER_SIZE)
-                        If PASSTHROUGH_ACTIVE And PASSTHROUGH_PID.Contains(TS_PACKET_PID) Then
+                        If AVS_I_FRAME_FLUSH_FLAG > 0 Then
+                            AVS_I_FRAME_FLUSH_FLAG += TS_PACKET_SIZE
+                        ElseIf PASSTHROUGH_ACTIVE And PASSTHROUGH_PID.Contains(TS_PACKET_PID) Then
                             TS_STREAM(MT_THREAD_ID).Write(TS_PACKET_HEADER, 0, TS_PACKET_HEADER.Length)
                             TS_STREAM(MT_THREAD_ID).Write(TS_PACKET_PAYLOAD, 0, TS_PACKET_PAYLOAD.Length)
                         End If
@@ -1184,7 +1201,7 @@ Public Class MainUI
                     INPUT_READER.BaseStream.Position -= TS_PACKET_HEADER_SIZE - 1
                 End If
             Loop Until INPUT_READER.BaseStream.Position >= INPUT_READ.Length - 1
-            INPUT_READER.BaseStream.Position -= TS_PACKET_SIZE
+            INPUT_READER.BaseStream.Position -= TS_PACKET_SIZE    'Move origin to current packet
             MT_STATUS(MT_THREAD_ID) = 2
         Catch ex As Exception
             ERROR_MESSAGE = ex.ToString
@@ -1208,7 +1225,7 @@ Public Class MainUI
                 Dim _loc_3 As String = _loc_2.Trim.Replace(" ", "").ToLower()
                 Dim _loc_4 As String = Regex.Match(_loc_3, "program([0-9]*)", RegexOptions.IgnoreCase).Groups(1).Value.Trim()
                 If _loc_4.Length > 0 Or _loc_3.Contains("noprogram") Then
-                    If AVS_PID > 32 Then
+                    If AVS_PID >= 32 Then
                         Exit For
                     Else
                         PMT_PROGRAM_NUMBER = Int(_loc_4)
