@@ -1179,7 +1179,7 @@ Public Class MainUI
                                         If AVS_FRAME_TYPE_PREVIOUS = 3 Then    'Last frame is a B frame, so need to read the entire next I frame to flush
                                             AVS_I_FRAME_FLUSH_FLAG += TS_PACKET_SIZE
                                         Else
-                                            If AVS_FRAME_TYPE_CURRENT >= 1 And AVS_FRAME_TYPE_CURRENT <= 3 Then AVS_FRAME_TYPE_PREVIOUS = AVS_FRAME_TYPE_CURRENT
+                                            AVS_FRAME_TYPE_PREVIOUS = AVS_FRAME_TYPE_CURRENT
                                             PASSTHROUGH_ACTIVE = True
                                             If ES_STREAM(MT_THREAD_ID).Length <= 0 Then    'Is this the GOP starting I frame, or the GOP ending I frame
                                                 INTRA_PTS(MT_THREAD_ID) = GetPTS(PES_HEADER, 10)
