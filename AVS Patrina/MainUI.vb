@@ -1125,6 +1125,7 @@ Public Class MainUI
             Dim MT_THREAD_ID As Integer = ThreadID
             Dim INPUT_FRAME_GROUP As Integer = 10000000
             Dim AVS_I_FRAME_FLUSH_FLAG As Integer = 0
+            Dim AVS_WRITE_HALT_FLAG As Boolean = False
             Do
                 Dim TS_PACKET_READ_AVAILABLE As Integer = TS_PACKET_SIZE
                 TS_PACKET_READ_AVAILABLE -= TS_PACKET_HEADER_SIZE
@@ -1170,36 +1171,50 @@ Public Class MainUI
                                     If AVS_I_FRAME_FLUSH_FLAG > 0 Then    'Pending flush, end read the next I frame
                                         INPUT_READER.BaseStream.Position -= AVS_I_FRAME_FLUSH_FLAG
                                         AVS_I_FRAME_FLUSH_FLAG = 0
-                                        AVS_FRAME_TYPE_PREVIOUS = 4
-                                        Exit Do
-                                    End If
-                                    INPUT_FRAME_GROUP += 1
-                                    INPUT_GOP(MT_THREAD_ID) = INPUT_FRAME_GROUP
-                                    If AVS_FRAME_TYPE_CURRENT = 1 And INPUT_FRAME_GROUP >= GOP_MIN Then
-                                        If AVS_FRAME_TYPE_PREVIOUS = 3 Then    'Last frame is a B frame, so need to read the entire next I frame to flush
-                                            AVS_I_FRAME_FLUSH_FLAG += TS_PACKET_SIZE
+                                        If AVS_FRAME_TYPE_CURRENT = 3 Then
+                                            AVS_FRAME_TYPE_PREVIOUS = 6    'Last frame of last GOP is B frame, but next GOP starts with I then B frames. Cannot deal with B//IB sequence.
+                                            INPUT_READER.BaseStream.Position -= TS_PACKET_SIZE
+                                            INPUT_FRAME_GROUP -= 1
                                         Else
-                                            AVS_FRAME_TYPE_PREVIOUS = AVS_FRAME_TYPE_CURRENT
-                                            PASSTHROUGH_ACTIVE = True
-                                            If ES_STREAM(MT_THREAD_ID).Length <= 0 Then    'Is this the GOP starting I frame, or the GOP ending I frame
-                                                INTRA_PTS(MT_THREAD_ID) = GetPTS(PES_HEADER, 10)
-                                                INPUT_FRAME_GROUP = 0
-                                            Else
-                                                Exit Do
-                                            End If
+                                            AVS_FRAME_TYPE_PREVIOUS = 2
+                                            Exit Do
                                         End If
                                     Else
-                                        AVS_FRAME_TYPE_PREVIOUS = AVS_FRAME_TYPE_CURRENT
+                                        If AVS_FRAME_TYPE_PREVIOUS = 6 Then
+                                            AVS_WRITE_HALT_FLAG = True
+                                            AVS_FRAME_TYPE_CURRENT = 2
+                                            AVS_FRAME_TYPE_PREVIOUS = 3
+                                        Else
+                                            AVS_WRITE_HALT_FLAG = False
+                                        End If
+                                        INPUT_FRAME_GROUP += 1
+                                        INPUT_GOP(MT_THREAD_ID) = INPUT_FRAME_GROUP
+                                        If AVS_FRAME_TYPE_CURRENT = 1 And INPUT_FRAME_GROUP >= GOP_MIN Then
+                                            If AVS_FRAME_TYPE_PREVIOUS = 3 Then    'Last frame is a B frame, so need to read the entire next I frame to flush
+                                                AVS_I_FRAME_FLUSH_FLAG += TS_PACKET_SIZE
+                                            Else
+                                                AVS_FRAME_TYPE_PREVIOUS = AVS_FRAME_TYPE_CURRENT
+                                                PASSTHROUGH_ACTIVE = True
+                                                If ES_STREAM(MT_THREAD_ID).Length <= 0 Then    'Is this the GOP starting I frame, or the GOP ending I frame
+                                                    INTRA_PTS(MT_THREAD_ID) = GetPTS(PES_HEADER, 10)
+                                                    INPUT_FRAME_GROUP = 0
+                                                Else
+                                                    Exit Do
+                                                End If
+                                            End If
+                                        Else
+                                            AVS_FRAME_TYPE_PREVIOUS = AVS_FRAME_TYPE_CURRENT
+                                        End If
+                                        If Not AVS_WRITE_HALT_FLAG Then ES_STREAM(MT_THREAD_ID).Write(PES_PAYLOAD, 0, PES_PAYLOAD.Length)
                                     End If
-                                    ES_STREAM(MT_THREAD_ID).Write(PES_PAYLOAD, 0, PES_PAYLOAD.Length)
                                 Else
                                     If AVS_I_FRAME_FLUSH_FLAG > 0 Then AVS_I_FRAME_FLUSH_FLAG += TS_PACKET_SIZE
-                                    ES_STREAM(MT_THREAD_ID).Write(PES_PAYLOAD, 0, PES_PAYLOAD.Length)
+                                    If Not AVS_WRITE_HALT_FLAG Then ES_STREAM(MT_THREAD_ID).Write(PES_PAYLOAD, 0, PES_PAYLOAD.Length)
                                 End If
                             End If
                         Else
                             If AVS_I_FRAME_FLUSH_FLAG > 0 Then AVS_I_FRAME_FLUSH_FLAG += TS_PACKET_SIZE
-                            ES_STREAM(MT_THREAD_ID).Write(PES_DATA, 0, PES_DATA.Length)
+                            If Not AVS_WRITE_HALT_FLAG Then ES_STREAM(MT_THREAD_ID).Write(PES_DATA, 0, PES_DATA.Length)
                         End If
                     Else
                         Dim TS_PACKET_PAYLOAD As Byte() = INPUT_READER.ReadBytes(TS_PACKET_SIZE - TS_PACKET_HEADER_SIZE)

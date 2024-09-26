@@ -154,7 +154,7 @@ Partial Class Preferences
         Me.NUM_PCR_OFFSET.Name = "NUM_PCR_OFFSET"
         Me.NUM_PCR_OFFSET.Size = New System.Drawing.Size(70, 29)
         Me.NUM_PCR_OFFSET.TabIndex = 311
-        Me.NUM_PCR_OFFSET.Value = New Decimal(New Integer() {20, 0, 0, 0})
+        Me.NUM_PCR_OFFSET.Value = New Decimal(New Integer() {8, 0, 0, 0})
         '
         'LBL_PTS_DELAY
         '
