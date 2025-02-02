@@ -62,7 +62,7 @@ Public Class MainUI
                 Try
                     For ThreadID = 0 To MT_THREADS - 1
                         If MT_STATUS(ThreadID) = 0 Then
-                            If INPUT_READER.BaseStream.Position >= INPUT_READ.Length - TS_PACKET_SIZE - 1 Then
+                            If INPUT_READ.Length - INPUT_READER.BaseStream.Position < TS_PACKET_SIZE Then
                                 MT_IDLE += 1
                                 MT_STATUS(ThreadID) = Int32.MaxValue
                             Else
@@ -1127,6 +1127,11 @@ Public Class MainUI
             Dim AVS_I_FRAME_FLUSH_FLAG As Integer = 0
             Dim AVS_WRITE_HALT_FLAG As Boolean = False
             Do
+                If INPUT_READ.Length - INPUT_READER.BaseStream.Position < TS_PACKET_SIZE Then
+                    MT_STATUS(MT_THREAD_ID) = 2
+                    Exit Try
+                End If
+
                 Dim TS_PACKET_READ_AVAILABLE As Integer = TS_PACKET_SIZE
                 TS_PACKET_READ_AVAILABLE -= TS_PACKET_HEADER_SIZE
                 Dim TS_PACKET_HEADER As Byte() = INPUT_READER.ReadBytes(TS_PACKET_HEADER_SIZE)
