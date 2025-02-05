@@ -62,7 +62,7 @@ Public Class MainUI
                 Try
                     For ThreadID = 0 To MT_THREADS - 1
                         If MT_STATUS(ThreadID) = 0 Then
-                            If INPUT_READ.Length - INPUT_READER.BaseStream.Position < TS_PACKET_SIZE Then
+                            If INPUT_READ.Length - TS_PACKET_SIZE - INPUT_READER.BaseStream.Position < TS_PACKET_SIZE Then
                                 MT_IDLE += 1
                                 MT_STATUS(ThreadID) = Int32.MaxValue
                             Else
