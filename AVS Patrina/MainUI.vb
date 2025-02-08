@@ -745,7 +745,7 @@ Public Class MainUI
                     Dim YUV_FRAME_SIZE As Long = Int(AVS_VIDEO_INFO(0)) * Int(AVS_VIDEO_INFO(1)) * 1.5
                     Dim YUV_FILE_SIZE As Long = 0
                     If My.Computer.FileSystem.FileExists(YUV_CACHE_FILE) Then YUV_FILE_SIZE = New FileInfo(YUV_CACHE_FILE).Length
-                    If Not YUV_FILE_SIZE = INPUT_GOP(ThreadID) * YUV_FRAME_SIZE And Not INPUT_GOP(ThreadID) = 0 Then
+                    If Not YUV_FILE_SIZE = INPUT_GOP(ThreadID) * YUV_FRAME_SIZE And Not INPUT_GOP(ThreadID) = 0 And INPUT_GOP(ThreadID) < 10000000 Then
                         Dim YUV_FILE_STREAM As New IO.FileStream(YUV_CACHE_FILE, IO.FileMode.OpenOrCreate, IO.FileAccess.Write, IO.FileShare.None)
                         YUV_FILE_STREAM.SetLength(INPUT_GOP(ThreadID) * YUV_FRAME_SIZE)
                         If YUV_FILE_SIZE < YUV_FILE_STREAM.Length Then
