@@ -20,7 +20,6 @@ Public Class MainUI
     Public CLOUD_TRANSCODING As String = ""
     Public CONVERSION_STREAM As New List(Of MemoryStream)
     Public DRA_PID As Integer = -1
-    Public ENCODE_PARAMETERS As String = ""
     Public ERROR_MESSAGE As String = ""
     Public ES_STREAM As New List(Of MemoryStream)
     Public GOP_MIN As Integer = 25
@@ -43,6 +42,7 @@ Public Class MainUI
     Public PMT_PID As Integer = 32
     Public PMT_PROGRAM_NUMBER As Integer = 1
     Public PTS_DELAY As Integer = 0
+    ReadOnly PTS_MAX As Long = 8589934591
     Public PROCESSOR_STOPWATCH As New Stopwatch
     Public PROCESSOR_STOPWATCH_PROGRESS As Integer = -1
     Public TS_ID As Integer = 1
@@ -240,7 +240,7 @@ Public Class MainUI
                             AVS_VIDEO_INFO.Add(AVC_CONFIG_CACHE_FILE)
                             AVS_VIDEO_INFO.Add(AVC_CONFIG_CACHE)
                             My.Computer.FileSystem.WriteAllText(AVC_CONFIG_CACHE_FILE, AVC_CONFIG_CACHE, False, Encoding.Default)
-                        Else
+                        ElseIf Not CLOUD_TRANSCODING.Contains("://") Then
                             MsgBox("无法获取AVC编码器配置文件！", vbExclamation, "任务失败")
                             BTN_HANDLE.Enabled = True
                             Exit Sub
@@ -369,8 +369,10 @@ Public Class MainUI
         Try
             For Each PresetFile In Directory.GetFiles(Application.StartupPath, "*.ini")
                 Dim PresetFileName As String = Path.GetFileNameWithoutExtension(PresetFile)
-                CBO_PRESET.Items.Add(PresetFileName)
-                CBO_PRESET.Text = PresetFileName
+                If Not PresetFileName.ToLower() = "desktop" Then
+                    CBO_PRESET.Items.Add(PresetFileName)
+                    CBO_PRESET.Text = PresetFileName
+                End If
             Next
         Catch ex As Exception
 
@@ -388,7 +390,7 @@ Public Class MainUI
     Private Sub TSI_ABOUT_Click(sender As Object, e As EventArgs) Handles TSI_ABOUT.Click
         Try
             Dim VersionStrings As String() = Application.ProductVersion.ToString.Split(".")
-            MsgBox("AVS Patrina" & vbCrLf & vbCrLf & "AVS1-P16广播视频编码转换器" & vbCrLf & vbCrLf & "软件版本：" & VersionStrings(0) & "." & VersionStrings(1) & "." & VersionStrings(2) & vbCrLf & "更新时间：20" & VersionStrings(3).Substring(0, 2) & "年" & Int(VersionStrings(3).Substring(2, 2)) & "月" & vbCrLf & vbCrLf & "Copyright © 2021-2024 版权所有", vbInformation, TSI_ABOUT.Text.Split("(")(0))
+            MsgBox("AVS Patrina" & vbCrLf & vbCrLf & "AVS1-P16广播视频编码转换器" & vbCrLf & vbCrLf & "软件版本：" & VersionStrings(0) & "." & VersionStrings(1) & "." & VersionStrings(2) & vbCrLf & "更新时间：20" & VersionStrings(3).Substring(0, 2) & "年" & Int(VersionStrings(3).Substring(2, 2)) & "月" & vbCrLf & vbCrLf & "Copyright © 2021-2025 版权所有", vbInformation, TSI_ABOUT.Text.Split("(")(0))
         Catch ex As Exception
 
         End Try
@@ -1441,9 +1443,11 @@ Public Class MainUI
             httpReq.ServicePoint.Expect100Continue = False
             httpReq.ContentLength = PostData.Length
             httpReq.ContentType = "application/octet-stream"
-            httpReq.Headers.Add("X-Encode-Parameter", HttpUtility.UrlEncode(ENCODE_PARAMETERS))
+            httpReq.Headers.Add("X-GOP", INPUT_GOP(ThreadID).ToString())
             httpReq.Headers.Add("X-Thread-ID", ThreadID.ToString())
-            httpReq.Headers.Add("X-Video-Parameter", HttpUtility.UrlEncode(AVS_VIDEO_INFO(0) & " " & AVS_VIDEO_INFO(1) & " " & AVS_VIDEO_INFO(2)))
+            httpReq.Headers.Add("X-Video-Parameter", AVS_VIDEO_INFO(0) & ", " & AVS_VIDEO_INFO(1) & ", " & AVS_VIDEO_INFO(2))
+            Dim VersionStrings As String() = Application.ProductVersion.ToString.Split(".")
+            httpReq.UserAgent = "AVS-Patrina/" & VersionStrings(0) & "." & VersionStrings(1) & "." & VersionStrings(2)
             Dim PostStream As Stream = httpReq.GetRequestStream()
             PostStream.Write(PostData, 0, PostData.Length)
             PostStream.Close()
@@ -1557,14 +1561,7 @@ Public Class MainUI
             _loc_1 = KeyRead("GOP_MIN")
             If IsNumeric(_loc_1) Then GOP_MIN = Int(_loc_1)
 
-            '_loc_1 = KeyRead("Encoding")
-            'If _loc_1.Length > 0 And _loc_1.Contains("-") Then
-            '    ENCODE_PARAMETERS = _loc_1
-            'Else
-            '    ENCODE_PARAMETERS = "-I420"
-            'End If
-
-            'CLOUD_TRANSCODING = KeyRead("Transcoding")
+            CLOUD_TRANSCODING = KeyRead("CLOUD_TRANSCODE")
         Catch ex As Exception
 
         End Try
@@ -1601,6 +1598,8 @@ Public Class MainUI
 
     Public Function SetPCR(param1 As Long) As Byte()
         Try
+            If param1 > PTS_MAX Then param1 -= PTS_MAX + 1
+            If param1 < 0 Then param1 += PTS_MAX + 1
             Dim _loc_2 As New BitArray(New Byte(5) {})
             Dim _loc_3 As New BitArray(BitConverter.GetBytes(param1))
             _loc_2(39) = _loc_3(0)
@@ -1649,6 +1648,8 @@ Public Class MainUI
 
     Public Function SetPTS(param1 As Long, param2 As Byte()) As Byte()
         Try
+            If param1 > PTS_MAX Then param1 -= PTS_MAX + 1
+            If param1 < 0 Then param1 += PTS_MAX + 1
             Dim _loc_2 As New BitArray(param2)
             Dim _loc_3 As New BitArray(BitConverter.GetBytes(param1))
             _loc_2(33) = _loc_3(0)

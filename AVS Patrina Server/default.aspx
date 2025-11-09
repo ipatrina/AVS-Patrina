@@ -11,14 +11,14 @@
 <% @Import Namespace="System.Web.Security" %>
 
 <Script runat=server>
-	
-    ' AVS Patrina Server
-    ' Version: 2.0.1
-    ' Date: 2022.08
 
-    Dim ES_DECODER As String = "C:\Program Files (x86)\AVS\ldecod.exe"
+    ' AVS Patrina Server
+    ' Version: 3.5.0
+    ' Date: 2025.11
+
+    Dim ES_DECODER As String = "ldecod.exe"
     Dim MAINCONCEPT_ENC_AVC As String = "C:\Program Files (x86)\AVS\sample_enc_avc.exe"
-    Dim MAINCONCEPT_ENC_AVC_CONFIG As String = "sample_enc_avc.ini"
+    Dim MAINCONCEPT_ENC_AVC_CONFIG As String = "Standard_1080i_25.ini"
     Dim Key As String = "00000000000000000000000000000000"
     Dim Threading As Integer = 10
 
@@ -31,8 +31,8 @@
                 Exit Sub
             End If
 
-            Dim AVS_VIDEO_INFO As String() = GetRequestHeader("X-Video-Parameter").Split(" ")
-            Dim ENCODE_PARAMETERS As String = GetRequestHeader("X-Encode-Parameter")
+            Dim AVS_VIDEO_INFO As String() = GetRequestHeader("X-Video-Parameter").Split(","c).Select(Function(s) s.Trim()).ToArray()
+            Dim INPUT_GOP As String = GetRequestHeader("X-GOP")
 
             If GetQueryString("Profile").Length > 0 Then
                 If My.Computer.FileSystem.FileExists(Path.GetDirectoryName(MAINCONCEPT_ENC_AVC) & "\" & GetQueryString("Profile") & ".ini") Then
@@ -40,7 +40,7 @@
                 End If
             Else
                 If AVS_VIDEO_INFO(0) = "720" Then
-                    MAINCONCEPT_ENC_AVC_CONFIG = "sd.ini"
+                    MAINCONCEPT_ENC_AVC_CONFIG = "Standard_576i_25.ini"
                 End If
             End If
 
@@ -62,10 +62,12 @@
             Dim AVC_CONFIG_CACHE_FILE As String = GetTempFile() & ".ini"
             My.Computer.FileSystem.WriteAllText(AVC_CONFIG_CACHE_FILE, AVC_CONFIG_CACHE, False, Encoding.Default)
 
-            If Request.ContentLength <= 0 Or AVS_VIDEO_INFO.Length = 0 Or ENCODE_PARAMETERS.Length = 0 Then
+            If Request.ContentLength <= 0 Or AVS_VIDEO_INFO.Length = 0 Or INPUT_GOP.Length = 0 Then
                 Response.StatusCode = 204
                 Exit Sub
             End If
+
+            '======== BEGIN CONVERT STREAM ========
 
             Dim ES_BUFFER As Byte() = StreamToBytes(Request.InputStream)
             If Not ES_BUFFER.Length = Request.ContentLength Then
@@ -78,7 +80,7 @@
 
             Dim YUV_CACHE_FILE As String = GetTempFile() & ".yuv"
             Dim ES_DECODER_SHELL As New Process()
-            ES_DECODER_SHELL.StartInfo.FileName = ES_DECODER
+            ES_DECODER_SHELL.StartInfo.FileName = Path.GetDirectoryName(MAINCONCEPT_ENC_AVC) & "\" & ES_DECODER
             ES_DECODER_SHELL.StartInfo.WorkingDirectory = Path.GetDirectoryName(ES_CACHE_FILE)
             ES_DECODER_SHELL.StartInfo.Arguments = "nul " & Path.GetFileName(ES_CACHE_FILE) & " " & Path.GetFileName(YUV_CACHE_FILE) & " nul 2 0 0 0 0"
             ES_DECODER_SHELL.StartInfo.WindowStyle = ProcessWindowStyle.Hidden
@@ -86,6 +88,38 @@
             ES_DECODER_SHELL.WaitForExit()
             ES_DECODER_SHELL.Close()
             ES_DECODER_SHELL.Dispose()
+
+            Dim YUV_FRAME_SIZE As Long = Int(AVS_VIDEO_INFO(0)) * Int(AVS_VIDEO_INFO(1)) * 1.5
+            Dim YUV_FILE_SIZE As Long = 0
+            If My.Computer.FileSystem.FileExists(YUV_CACHE_FILE) Then YUV_FILE_SIZE = New FileInfo(YUV_CACHE_FILE).Length
+            If Not YUV_FILE_SIZE = INPUT_GOP * YUV_FRAME_SIZE And Not INPUT_GOP = 0 And INPUT_GOP < 10000000 Then
+                Dim YUV_FILE_STREAM As New IO.FileStream(YUV_CACHE_FILE, IO.FileMode.OpenOrCreate, IO.FileAccess.Write, IO.FileShare.None)
+                YUV_FILE_STREAM.SetLength(INPUT_GOP * YUV_FRAME_SIZE)
+                If YUV_FILE_SIZE < YUV_FILE_STREAM.Length Then
+                    Try
+                        Dim YUV_STUFF As Byte() = New Byte() {}
+                        Dim YUV_STUFF_FILE As String = ""
+                        For Each YUV_STUFF_FILE_SELECT As String In Directory.GetFiles(Path.GetDirectoryName(MAINCONCEPT_ENC_AVC), "*.yuv")
+                            If New IO.FileInfo(YUV_STUFF_FILE_SELECT).Length = YUV_FRAME_SIZE Then
+                                YUV_STUFF_FILE = YUV_STUFF_FILE_SELECT
+                                Exit For
+                            End If
+                        Next
+                        If YUV_STUFF_FILE.Length > 0 Then YUV_STUFF = My.Computer.FileSystem.ReadAllBytes(YUV_STUFF_FILE)
+
+                        Dim YUV_STUFF_OFFSET As Long = Math.Ceiling(YUV_FILE_SIZE / YUV_FRAME_SIZE) * YUV_FRAME_SIZE
+                        If YUV_STUFF.Length > 0 And YUV_STUFF_OFFSET < YUV_FILE_STREAM.Length Then
+                            YUV_FILE_STREAM.Seek(YUV_STUFF_OFFSET, 0)
+                            While YUV_FILE_STREAM.Position < YUV_FILE_STREAM.Length
+                                YUV_FILE_STREAM.Write(YUV_STUFF, 0, YUV_STUFF.Length)
+                            End While
+                        End If
+                    Catch ex As Exception
+
+                    End Try
+                End If
+                YUV_FILE_STREAM.Close()
+            End If
 
             Dim AVC_CACHE_FILE As String = GetTempFile() & ".avc"
 
@@ -102,6 +136,8 @@
                     RAW_ENCODER_SHELL.Dispose()
                 End If
             End If
+
+            '======== END CONVERT STREAM ========
 
             Dim AVC_CACHE_FILE_LENGTH As Long = 0
             If My.Computer.FileSystem.FileExists(AVC_CACHE_FILE) Then
